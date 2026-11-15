@@ -1,0 +1,65 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag matching Cargo.toml (for example v0.2.0)
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - name: Verify version and release notes
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, tomllib
+          version=tomllib.loads(pathlib.Path('Cargo.toml').read_text())['package']['version']
+          assert os.environ['RELEASE_TAG'] == f'v{version}', 'Tag must match Cargo.toml'
+          assert pathlib.Path(f'docs/releases/{version}.md').is_file(), 'Missing release notes'
+          PY
+  packages:
+    needs: verify
+    uses: ./.github/workflows/build.yml
+    with:
+      ref: ${{ inputs.tag || github.ref_name }}
+  draft:
+    needs: packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - name: Create draft preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          (cd dist && sha256sum *-unsigned.zip > SHA256SUMS)
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+            gh release upload "$RELEASE_TAG" dist/* --clobber
+          else
+            gh release create "$RELEASE_TAG" dist/* --draft --prerelease --verify-tag \
+              --notes-file "docs/releases/${RELEASE_TAG#v}.md" \
+              --title "Picadura ${RELEASE_TAG#v} — Unsigned preview"
+          fi

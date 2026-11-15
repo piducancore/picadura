@@ -1,0 +1,17 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="Installation">
+  <div class="page-heading"><p class="eyebrow">SETUP / FIRST PLAY</p><h1>Give it a voice<span class="accent">.</span></h1><p class="lead">Picadura sends MIDI. Your instrument makes the sound.</p></div>
+  <div class="prose">
+    <section><h2>1. Install the plugin</h2><p>Download the ZIP for your operating system, extract it, and close your DAW. Copy the entire plugin bundle into its scan folder.</p>
+      <h3>Windows · x64</h3><p>Copy <code>Picadura.vst3</code> to <code>C:\Program Files\Common Files\VST3\</code>, or <code>Picadura.clap</code> to <code>C:\Program Files\Common Files\CLAP\</code> for a CLAP-compatible host. These folders may require administrator permission.</p>
+      <h3>macOS · Apple Silicon</h3><p>Copy <code>Picadura.vst3</code> to <code>~/Library/Audio/Plug-Ins/VST3/</code>, or <code>Picadura.clap</code> to <code>~/Library/Audio/Plug-Ins/CLAP/</code>. This build is arm64, not an Intel or universal binary. Run your DAW natively on Apple Silicon.</p>
+      <h3>Linux · x64</h3><p>Copy the VST3 bundle into <code>~/.vst3/</code> or the CLAP file into <code>~/.clap/</code>, or use your host’s configured directories. Builds target Ubuntu 22.04 or newer compatible environments.</p>
+      <p>Restart your DAW and rescan plugins. Find Picadura under <strong>piducancore</strong>.</p>
+    </section>
+    <section><h2>2. Route MIDI to an instrument</h2><h3>Ableton Live</h3><ol><li>Load Picadura on a MIDI track.</li><li>Create a second MIDI track and load your synth there.</li><li>On the synth track, set <strong>MIDI From</strong> to Picadura’s track, then select <strong>Picadura</strong> in the lower chooser.</li><li>Set monitoring to <strong>In</strong>, then press Play.</li></ol><p>Live treats VST MIDI generators differently from native MIDI effects. An instrument cannot follow Picadura in the same Live device chain; use the second track.</p><h3>REAPER</h3><p>Place Picadura before an instrument in the same track’s FX chain, then start the transport.</p></section>
+    <section><h2>3. Shape the pattern</h2><p>Generate a line, set the Steps control to any length up to 64, and use the four page buttons to reach each group of 16. Drag vertically for pitch and horizontally for timing. Negative timing is early; positive timing is late.</p><p>Slides use overlapping MIDI notes. Enable the synth’s mono legato/portamento. Accents use higher velocity, so choose a velocity-sensitive patch.</p></section>
+    <section class="notice"><h2>Preview builds</h2><p>Packages are not publisher-signed or notarized. Operating-system warnings are possible. Check the release notes for tested platforms and known limitations, and report errors with your OS, DAW and plugin version.</p><a href="https://github.com/piducancore/picadura/issues">Report an issue ↗</a></section>
+  </div>
+</Layout>

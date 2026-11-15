@@ -1,0 +1,375 @@
+import "JetBrainsMono-Regular.ttf";
+component InstrumentButton inherits Rectangle {
+    in property <string> label: "";
+    callback clicked();
+
+    min-width: 0px;
+    height: 34px;
+    border-radius: 4px;
+    background: touch.pressed ? #e5fa36 : #232726;
+    border-width: 1px;
+    border-color: touch.has-hover ? #e5fa36 : #676767;
+
+    Text {
+        text: root.label;
+        color: touch.pressed ? #080808 : touch.has-hover ? #e5fa36 : #f5f2e9;
+        font-size: 9px;
+        font-weight: 900;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+component InstrumentKnob inherits Rectangle {
+    in property <float> value: 0.0;
+    in property <string> value-text: "";
+    in property <string> label: "";
+    in property <bool> enabled: true;
+    in property <bool> interactive: true;
+    in property <bool> type-selector: false;
+    callback edit-began();
+    callback value-changed(float);
+    callback edit-ended();
+
+    min-width: 0px;
+    min-height: 0px;
+    preferred-width: 82px;
+    preferred-height: 82px;
+    background: transparent;
+    opacity: root.enabled ? 1.0 : 0.32;
+    property <length> dial-size: min(78px, min(root.width - 14px, root.height - 40px));
+    property <length> dial-top: max(4px, (root.height - root.dial-size - 40px) / 2);
+
+    Rectangle {
+        x: 6px; y: parent.height - 1px;
+        width: parent.width - 12px; height: 1px;
+        background: #454b47;
+    }
+    property <float> angle: 135 + root.value * 270;
+
+    Path {
+        x: (parent.width - root.dial-size) / 2;
+        y: root.dial-top;
+        width: root.dial-size;
+        height: root.dial-size;
+        viewbox-x: 0;
+        viewbox-y: 0;
+        viewbox-width: 64;
+        viewbox-height: 64;
+        stroke: #4c524e;
+        stroke-width: 5px;
+
+        MoveTo { x: 32 + 27 * cos(135deg); y: 32 + 27 * sin(135deg); }
+        ArcTo {
+            x: 32 + 27 * cos(405deg);
+            y: 32 + 27 * sin(405deg);
+            radius-x: 27;
+            radius-y: 27;
+            sweep: true;
+            large-arc: true;
+        }
+    }
+
+    Path {
+        x: (parent.width - root.dial-size) / 2;
+        y: root.dial-top;
+        width: root.dial-size;
+        height: root.dial-size;
+        viewbox-x: 0;
+        viewbox-y: 0;
+        viewbox-width: 64;
+        viewbox-height: 64;
+        stroke: root.enabled ? #e5fa36 : #4c524e;
+        stroke-width: 5px;
+
+        MoveTo { x: 32 + 27 * cos(135deg); y: 32 + 27 * sin(135deg); }
+        ArcTo {
+            x: 32 + 27 * cos(root.angle * 1deg);
+            y: 32 + 27 * sin(root.angle * 1deg);
+            radius-x: 27;
+            radius-y: 27;
+            sweep: true;
+            large-arc: root.value > 0.667;
+        }
+    }
+
+    Path {
+        x: (parent.width - root.dial-size) / 2;
+        y: root.dial-top;
+        width: root.dial-size;
+        height: root.dial-size;
+        viewbox-x: 0;
+        viewbox-y: 0;
+        viewbox-width: 64;
+        viewbox-height: 64;
+        stroke: #f5f2e9;
+        stroke-width: 2px;
+
+        MoveTo { x: 32; y: 32; }
+        LineTo {
+            x: 32 + 18 * cos(root.angle * 1deg);
+            y: 32 + 18 * sin(root.angle * 1deg);
+        }
+    }
+
+    Text {
+        x: 3px;
+        y: root.dial-top + root.dial-size + 2px;
+        width: parent.width - 6px;
+        height: 15px;
+        text: root.enabled ? root.value-text : "—";
+        color: root.enabled ? #f5f2e9 : #6b6962;
+        font-size: 10px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        overflow: elide;
+    }
+
+    Rectangle {
+        x: 2px;
+        y: root.dial-top + root.dial-size + 19px;
+        width: parent.width - 4px; height: 16px;
+        border-radius: 3px;
+        background: root.type-selector ? #e5fa36 : transparent;
+    }
+
+    Text {
+        x: 3px;
+        y: root.dial-top + root.dial-size + 20px;
+        width: parent.width - 6px;
+        height: 14px;
+        text: root.enabled ? root.label : "INACTIVE";
+        color: root.type-selector ? #202523 : root.enabled ? #e5fa36 : #5a5852;
+        font-size: 9px;
+        font-weight: 800;
+        horizontal-alignment: center;
+        overflow: elide;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled && root.interactive;
+        property <float> start-value: 0.0;
+        property <bool> editing: false;
+
+        pointer-event(event) => {
+            if event.button == PointerEventButton.left && event.kind == PointerEventKind.down {
+                self.start-value = root.value;
+                self.editing = true;
+                root.edit-began();
+            }
+            if event.button == PointerEventButton.left && event.kind == PointerEventKind.up && self.editing {
+                self.editing = false;
+                root.edit-ended();
+            }
+        }
+
+        moved => {
+            if self.pressed && self.editing {
+                root.value-changed(clamp(
+                    self.start-value - (self.mouse-y - self.pressed-y) / 145px,
+                    0.0,
+                    1.0,
+                ));
+            }
+        }
+    }
+}
+
+
+export struct ControlView { label: string, value: float, value-text: string }
+export struct StepView {
+    number: string, note: string, pitch: int, timing: float, timing-text: string,
+    on: bool, enabled: bool, accent: bool, slide: bool, edited: bool, playing: bool,
+}
+
+component StepCard inherits Rectangle {
+    in property <StepView> data;
+    callback toggled();
+    callback gesture-began(int);
+    callback changed(int,float);
+    callback gesture-ended(int);
+    min-width: 0px;
+    background: root.data.playing ? #313a22 : #202523;
+    border-width: 1px;
+    border-color: root.data.playing ? #e5fa36 : touch.has-hover ? #929c8a : #454b47;
+    border-radius: 4px;
+    opacity: root.data.enabled ? 1 : 0.3;
+    Text {
+        x: 6px; y: 8px; width: parent.width - 12px; height: 16px;
+        text: root.data.number; font-size: 11px;
+        color: root.data.playing ? #e5fa36 : #b7b4a9;
+    }
+    Rectangle {
+        x: 6px; y: 32px; width: parent.width - 12px; height: parent.height - 116px;
+        background: #141a16; border-radius: 3px;
+        for line in 4: Rectangle {
+            x: 0px; y: (line + 1) * parent.height / 5;
+            height: 1px; width: parent.width; background: #2e352e;
+        }
+        Rectangle {
+            x: 4px;
+            width: parent.width - 8px;
+            height: root.data.on ? 8px + clamp(root.data.pitch - 24, 0, 72) / 72 * (parent.height - 20px) : 0px;
+            y: parent.height - self.height - 4px;
+            background: root.data.accent ? #e5fa36 : #89976e;
+            border-radius: 2px;
+        }
+    }
+    Text {
+        x: 0px; y: parent.height - 78px; width: parent.width; height: 20px;
+        text: root.data.on ? root.data.note : "—";
+        color: root.data.on ? #f5f2e9 : #858278;
+        horizontal-alignment: center; font-size: 12px; font-weight: 700;
+    }
+    Rectangle {
+        x: 7px; y: parent.height - 47px; width: parent.width - 14px; height: 2px;
+        background: #454b47;
+        Rectangle { x: parent.width / 2; y: -4px; width: 1px; height: 10px; background: #858278; }
+        Rectangle {
+            x: parent.width / 2 + root.data.timing / 50 * parent.width - 2px;
+            y: -3px; width: 4px; height: 8px;
+            background: root.data.timing < 0 ? #ff936e : #e5fa36;
+        }
+    }
+    Text {
+        x: 0px; y: parent.height - 34px; width: parent.width; height: 15px;
+        text: root.data.timing-text; font-size: 9px; color: #b7b4a9; horizontal-alignment: center;
+    }
+    Text {
+        x: 0px; y: parent.height - 17px; width: parent.width; height: 14px;
+        text: (root.data.accent && root.data.on ? "A" : "") + (root.data.slide && root.data.on ? "S" : "") + (root.data.edited ? "*" : "");
+        font-size: 8px; color: #e5fa36; horizontal-alignment: center;
+    }
+    touch := TouchArea {
+        enabled: root.data.enabled;
+        property <int> axis: -1;
+        property <float> initial-pitch;
+        property <float> initial-timing;
+        pointer-event(event) => {
+            if event.button == PointerEventButton.left && event.kind == PointerEventKind.down {
+                self.axis = -1;
+                self.initial-pitch = root.data.pitch;
+                self.initial-timing = root.data.timing;
+            }
+            if event.button == PointerEventButton.left && event.kind == PointerEventKind.up {
+                if self.axis < 0 { root.toggled(); }
+                else { root.gesture-ended(self.axis); }
+                self.axis = -1;
+            }
+        }
+        moved => {
+            if self.pressed {
+                if self.axis < 0 && max(abs(self.mouse-x - self.pressed-x), abs(self.mouse-y - self.pressed-y)) > 4px {
+                    self.axis = abs(self.mouse-y - self.pressed-y) >= abs(self.mouse-x - self.pressed-x) ? 0 : 1;
+                    root.gesture-began(self.axis);
+                }
+                if self.axis == 0 {
+                    root.changed(0, clamp(round(self.initial-pitch - (self.mouse-y - self.pressed-y) / 6px), 0, 127));
+                }
+                if self.axis == 1 {
+                    root.changed(1, clamp(self.initial-timing + (self.mouse-x - self.pressed-x) / 2px, -25, 25));
+                }
+            }
+        }
+    }
+}
+
+export component PicaduraUi inherits Window {
+    title: "Picadura";
+    default-font-family: "JetBrains Mono";
+    default-font-size: 11px;
+    background: #161b18;
+    preferred-width: 1120px; preferred-height: 660px;
+    in property <[ControlView]> controls;
+    in property <[StepView]> steps;
+    in property <bool> running;
+    in property <int> page;
+    in property <string> status;
+    in property <string> seed-text;
+    in property <string> page-text;
+    callback control-began(int);
+    callback control-changed(int,float);
+    callback control-ended(int);
+    callback step-toggle(int);
+    callback step-began(int,int);
+    callback step-changed(int,int,float);
+    callback step-ended(int,int);
+    callback action(int);
+    callback page-changed(int);
+
+    VerticalLayout {
+        padding: 20px; spacing: 16px;
+        Rectangle {
+            height: 54px; background: #f5f2e9; border-radius: 4px;
+            HorizontalLayout {
+                padding-left: 16px; padding-right: 12px; spacing: 16px;
+                Text { text: "PICADURA"; color: #161b18; font-size: 27px; font-weight: 800; vertical-alignment: center; }
+                Text { text: "ACID LINE\nSEQUENCER"; color: #4c524e; font-size: 10px; vertical-alignment: center; }
+                Rectangle { horizontal-stretch: 1; background: transparent; }
+                Text { text: "piducancore"; color: #4c524e; vertical-alignment: center; }
+            }
+        }
+        HorizontalLayout {
+            height: 110px; spacing: 16px;
+            for item[i] in root.controls: InstrumentKnob {
+                value: item.value; value-text: item.value-text; label: item.label;
+                edit-began => { root.control-began(i); }
+                value-changed(v) => { root.control-changed(i,v); }
+                edit-ended => { root.control-ended(i); }
+            }
+        }
+        HorizontalLayout {
+            height: 34px; spacing: 10px;
+            InstrumentButton { label: "GENERATE"; clicked => {root.action(0);} }
+            InstrumentButton { label: "NOTES"; clicked => {root.action(1);} }
+            InstrumentButton { label: "RHYTHM"; clicked => {root.action(2);} }
+            InstrumentButton { label: "EXPRESSION"; clicked => {root.action(3);} }
+            InstrumentButton { label: "RESET NOTES"; clicked => {root.action(4);} }
+            InstrumentButton { label: "RESET TIMING"; clicked => {root.action(5);} }
+            InstrumentButton { label: root.running ? "RUN: ON" : "RUN: OFF"; clicked => {root.action(6);} }
+        }
+        HorizontalLayout {
+            height: 27px; spacing: 8px;
+            Text { text: root.page-text; color: #f5f2e9; vertical-alignment: center; }
+            Rectangle { horizontal-stretch: 1; background: transparent; }
+            for pg in 4: Rectangle {
+                width: 105px; border-radius: 3px;
+                background: root.page == pg ? #e5fa36 : #232726;
+                Text {
+                    text: (pg * 16 + 1) + "–" + (pg * 16 + 16);
+                    color: root.page == pg ? #161b18 : #b7b4a9;
+                    horizontal-alignment: center; vertical-alignment: center;
+                }
+                TouchArea { clicked => {root.page-changed(pg);} }
+            }
+        }
+        HorizontalLayout {
+            min-height: 200px; vertical-stretch: 1; spacing: 6px;
+            for step[i] in root.steps: StepCard {
+                data: step;
+                toggled => {root.step-toggle(i);}
+                gesture-began(axis) => {root.step-began(i,axis);}
+                changed(axis,v) => {root.step-changed(i,axis,v);}
+                gesture-ended(axis) => {root.step-ended(i,axis);}
+            }
+        }
+        Rectangle { height: 1px; background: #454b47; }
+        HorizontalLayout {
+            height: 17px;
+            Text { text: "DRAG ↑↓ PITCH  ·  DRAG ←→ TIMING  ·  CLICK NOTE/REST"; color: #b7b4a9; font-size: 10px; }
+            Rectangle { horizontal-stretch: 1; background: transparent; }
+            Text { text: root.status; color: #e5fa36; font-size: 10px; }
+        }
+        HorizontalLayout {
+            height: 14px;
+            Text { text: "TIMING: − EARLY / + LATE (% OF STEP)   ·   A ACCENT / S SLIDE / * EDITED"; color: #858278; font-size: 9px; }
+            Rectangle { horizontal-stretch: 1; background: transparent; }
+            Text { text: root.seed-text; color: #858278; font-size: 9px; }
+        }
+    }
+}

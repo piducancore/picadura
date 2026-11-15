@@ -1,0 +1,21 @@
+---
+import Layout from '../layouts/Layout.astro';
+import screenshot from '../../../docs/picadura.png';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+<Layout title="Acid lines, your way">
+  <section class="hero">
+    <p class="eyebrow">MIDI SEQUENCER / BY PIDUCANCORE</p>
+    <h1>A little bite.<br /><em>A different groove.</em></h1>
+    <p class="lead">Generate an acid line. Pull a note into place. Push a step ahead of the beat. Picadura sends the pattern to the synth you already love.</p>
+    <div class="actions"><a class="button" href={`${base}/downloads/`}>Get Picadura ↗</a><a class="text-link" href={`${base}/installation/`}>How to connect your synth</a></div>
+    <p class="muted">VST3 + CLAP · Windows / macOS / Linux · MIDI output, no built-in synth</p>
+  </section>
+  <figure class="product"><img src={screenshot.src} width={screenshot.width} height={screenshot.height} alt="Picadura's Slint editor showing generation controls, four step pages, pitch bars and per-step timing offsets" fetchpriority="high" /><figcaption>64 steps. Four pages. Every note and timing offset saved with your session.</figcaption></figure>
+  <section class="feature-grid" aria-label="Working with Picadura">
+    <article><p class="eyebrow">01 / FIND A LINE</p><h2>Start with a spark.</h2><p>Choose a root and scale, set your density, then Generate. Regenerate notes, rhythm or expression independently while keeping the parts that work.</p></article>
+    <article><p class="eyebrow">02 / MAKE IT YOURS</p><h2>Move the notes.</h2><p>Drag up or down to change pitch. Click to toggle a note or rest. Grow the sequence from one step to 64 and navigate in pages of 16.</p></article>
+    <article><p class="eyebrow">03 / FIND THE POCKET</p><h2>Play with the clock.</h2><p>Drag left to trigger a note early, right to trigger it late. Each step moves up to a quarter-step either way, alongside global swing, gate, accent and slide controls.</p></article>
+  </section>
+  <section class="prose"><h2>Your synth supplies the voice.</h2><p>Picadura generates MIDI, not audio. In Ableton Live, route its MIDI output to an instrument on another track. In REAPER, place it before your synth in the FX chain. Enable mono legato or portamento on the synth to hear slides.</p><p><a href={`${base}/installation/`}>Routing and installation instructions ↗</a></p></section>
+</Layout>

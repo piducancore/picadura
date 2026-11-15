@@ -1,0 +1,22 @@
+Picadura by piducancore — VST3 / CLAP MIDI sequencer
+
+Copy the entire plugin bundle; do not extract only the internal executable.
+Windows x64: C:\Program Files\Common Files\VST3\ or C:\Program Files\Common Files\CLAP\
+macOS Apple Silicon: ~/Library/Audio/Plug-Ins/VST3/ or ~/Library/Audio/Plug-Ins/CLAP/
+Linux x64: ~/.vst3/ or ~/.clap/ (or your host's configured scan directory).
+
+Close and reopen your DAW, rescan, and look under vendor piducancore.
+Packages are unsigned (macOS ad-hoc signed, not notarized).
+
+Picadura outputs MIDI, not sound. In Ableton Live, load a synth on a second
+MIDI track, set MIDI From to Picadura's track, select Picadura in the lower
+chooser, and set monitoring to In. Start the transport.
+In REAPER you can put Picadura before a synth in the same track's FX chain.
+
+Drag steps vertically for pitch, horizontally for early/late timing.
+Set Steps to 1–64; page buttons select groups of 16. Enable mono legato or
+portamento on the receiving synth for slides.
+
+Documentation: https://piducan.dev/picadura/
+Issues: https://github.com/piducancore/picadura/issues
+See RELEASE-NOTES.md for platform details and preview limitations.

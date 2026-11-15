@@ -1,0 +1,22 @@
+[vendor]
+name = "piducancore"
+id = "com.picadura"
+au_manufacturer = "Pica"
+
+[[plugin]]
+name = "Picadura"
+bundle_id = "picadura"
+crate = "picadura"
+category = "midi"
+fourcc = "Pica"
+au_tag = "MIDI"
+# VST3 secondary subcategory — drives the Cubase plugin submenu.
+# Tighten to your effect kind: "Delay", "Distortion", "Dynamics",
+# "EQ", "Filter", "Mastering", "Modulation", "Pitch Shift",
+# "Reverb", "Surround", "Analyzer", "Spatial". Leave as "Tools" for
+# generic utilities. Without this, Cubase buckets the plugin under
+# "Other".
+vst3_subcategory = "Tools"
+
+midi_input = false
+midi_output = true

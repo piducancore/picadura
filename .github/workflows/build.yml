@@ -1,0 +1,107 @@
+name: Build and validate plugins
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        default: ''
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    name: ${{ matrix.slug }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            slug: linux-x64
+          - os: windows-2022
+            slug: windows-x64
+          - os: macos-14
+            slug: macos
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy,rustfmt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.slug }}
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libfontconfig-dev libgl1-mesa-dev libudev-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev xvfb xauth zip
+      - name: Format, lint and tests
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --locked --all-targets --all-features -- -D warnings
+          cargo test --locked --lib
+          cargo test --locked --lib --features rt-paranoid
+          node --test tools/check-notices.test.mjs
+          node tools/check-notices.mjs docs/releases/THIRDPARTY.json
+      - name: Install build and validation tools
+        run: |
+          cargo install cargo-truce --version 6.3.0 --locked
+          cargo install --git https://github.com/free-audio/clap-validator --locked
+          case "$RUNNER_OS" in
+            Linux) asset=pluginval_Linux.zip ;;
+            macOS) asset=pluginval_macOS.zip ;;
+            Windows) asset=pluginval_Windows.zip ;;
+          esac
+          mkdir -p target/tools/pluginval
+          curl --fail --location --retry 3 "https://github.com/Tracktion/pluginval/releases/download/v1.0.4/$asset" --output target/tools/pluginval.zip
+          unzip -q target/tools/pluginval.zip -d target/tools/pluginval
+          validator="$(find target/tools/pluginval -type f \( -name pluginval -o -name pluginval.exe \) -print -quit)"
+          test -n "$validator"
+          chmod +x "$validator"
+          dirname "$validator" >> "$GITHUB_PATH"
+      - name: Build and validate exact bundles
+        run: |
+          cargo truce build --clap --vst3
+          clap-validator validate "target/bundles/Picadura.clap"
+          if [[ "$RUNNER_OS" == Linux ]]; then
+            xvfb-run -a pluginval --strictness-level 5 --skip-gui-tests --validate "$(pwd)/target/bundles/Picadura.vst3"
+          else
+            pluginval --strictness-level 5 --skip-gui-tests --validate "$(pwd)/target/bundles/Picadura.vst3"
+          fi
+      - name: Check dependency inventory
+        run: |
+          cargo install cargo-bundle-licenses --version 4.2.0 --locked
+          cargo bundle-licenses --format json --output target/THIRDPARTY-discovered.json
+          node tools/check-notices.mjs docs/releases/THIRDPARTY.json target/THIRDPARTY-discovered.json
+      - name: Stage packages
+        run: |
+          version="$(cargo metadata --locked --no-deps --format-version 1 | python3 -c 'import json,sys; print(next(p["version"] for p in json.load(sys.stdin)["packages"] if p["name"] == "picadura"))')"
+          echo "PACKAGE_VERSION=$version" >> "$GITHUB_ENV"
+          mkdir -p dist/Picadura
+          cp -R target/bundles/Picadura.clap target/bundles/Picadura.vst3 dist/Picadura/
+          cp LICENSE docs/releases/THIRDPARTY.json docs/releases/FONT-LICENSE.txt dist/Picadura/
+          cp docs/INSTALL.txt dist/Picadura/INSTALL.txt
+          cp "docs/releases/$version.md" dist/Picadura/RELEASE-NOTES.md
+      - name: Archive macOS
+        if: runner.os == 'macOS'
+        run: ditto -c -k --sequesterRsrc --keepParent dist/Picadura "dist/Picadura-$PACKAGE_VERSION-macos-unsigned.zip"
+      - name: Archive Linux
+        if: runner.os == 'Linux'
+        run: cd dist && zip -qry "Picadura-$PACKAGE_VERSION-linux-x64-unsigned.zip" Picadura
+      - name: Archive Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path dist/Picadura -DestinationPath "dist/Picadura-$env:PACKAGE_VERSION-windows-x64-unsigned.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.slug }}
+          path: dist/*-unsigned.zip
+          if-no-files-found: error
+          retention-days: 14
