@@ -8,6 +8,47 @@ pub enum Scale {
     Major,
     Pentatonic,
     Chromatic,
+    Lydian,
+    Mixolydian,
+    Locrian,
+    #[name = "Harm. minor"]
+    HarmonicMinor,
+    #[name = "Melodic minor"]
+    MelodicMinor,
+    #[name = "Major pent."]
+    MajorPentatonic,
+    Blues,
+    #[name = "Whole tone"]
+    WholeTone,
+    #[name = "Dim. W-H"]
+    DiminishedWholeHalf,
+    #[name = "Dim. H-W"]
+    DiminishedHalfWhole,
+}
+
+impl Scale {
+    /// Semitone offsets from the root. Keep the original enum indices stable.
+    pub(crate) fn intervals(self) -> &'static [i32] {
+        match self {
+            Self::Minor => &[0, 2, 3, 5, 7, 8, 10],
+            Self::Dorian => &[0, 2, 3, 5, 7, 9, 10],
+            Self::Phrygian => &[0, 1, 3, 5, 7, 8, 10],
+            Self::Major => &[0, 2, 4, 5, 7, 9, 11],
+            Self::Pentatonic => &[0, 3, 5, 7, 10],
+            Self::Chromatic => &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+            Self::Lydian => &[0, 2, 4, 6, 7, 9, 11],
+            Self::Mixolydian => &[0, 2, 4, 5, 7, 9, 10],
+            Self::Locrian => &[0, 1, 3, 5, 6, 8, 10],
+            Self::HarmonicMinor => &[0, 2, 3, 5, 7, 8, 11],
+            // Ascending melodic minor, held constant in either direction.
+            Self::MelodicMinor => &[0, 2, 3, 5, 7, 9, 11],
+            Self::MajorPentatonic => &[0, 2, 4, 7, 9],
+            Self::Blues => &[0, 3, 5, 6, 7, 10],
+            Self::WholeTone => &[0, 2, 4, 6, 8, 10],
+            Self::DiminishedWholeHalf => &[0, 2, 3, 5, 6, 8, 9, 11],
+            Self::DiminishedHalfWhole => &[0, 1, 3, 4, 6, 7, 9, 10],
+        }
+    }
 }
 
 #[derive(Params)]
@@ -294,6 +335,139 @@ pub struct PicaduraParams {
     pub timing_62: FloatParam,
     #[param(name = "Step 64 Timing", range = "linear(-25, 25)", default = 0)]
     pub timing_63: FloatParam,
+    // Append new controls so legacy ordinal IDs remain stable as well.
+    #[param(name = "Movement", range = "linear(0, 100)", default = 100)]
+    pub movement: FloatParam,
+    #[param(name = "Mutation Seed", range = "discrete(0, 65535)", default = 0)]
+    pub mutation_seed: IntParam,
+    #[param(name = "Step 01 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_0: IntParam,
+    #[param(name = "Step 02 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_1: IntParam,
+    #[param(name = "Step 03 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_2: IntParam,
+    #[param(name = "Step 04 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_3: IntParam,
+    #[param(name = "Step 05 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_4: IntParam,
+    #[param(name = "Step 06 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_5: IntParam,
+    #[param(name = "Step 07 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_6: IntParam,
+    #[param(name = "Step 08 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_7: IntParam,
+    #[param(name = "Step 09 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_8: IntParam,
+    #[param(name = "Step 10 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_9: IntParam,
+    #[param(name = "Step 11 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_10: IntParam,
+    #[param(name = "Step 12 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_11: IntParam,
+    #[param(name = "Step 13 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_12: IntParam,
+    #[param(name = "Step 14 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_13: IntParam,
+    #[param(name = "Step 15 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_14: IntParam,
+    #[param(name = "Step 16 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_15: IntParam,
+    #[param(name = "Step 17 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_16: IntParam,
+    #[param(name = "Step 18 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_17: IntParam,
+    #[param(name = "Step 19 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_18: IntParam,
+    #[param(name = "Step 20 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_19: IntParam,
+    #[param(name = "Step 21 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_20: IntParam,
+    #[param(name = "Step 22 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_21: IntParam,
+    #[param(name = "Step 23 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_22: IntParam,
+    #[param(name = "Step 24 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_23: IntParam,
+    #[param(name = "Step 25 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_24: IntParam,
+    #[param(name = "Step 26 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_25: IntParam,
+    #[param(name = "Step 27 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_26: IntParam,
+    #[param(name = "Step 28 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_27: IntParam,
+    #[param(name = "Step 29 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_28: IntParam,
+    #[param(name = "Step 30 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_29: IntParam,
+    #[param(name = "Step 31 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_30: IntParam,
+    #[param(name = "Step 32 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_31: IntParam,
+    #[param(name = "Step 33 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_32: IntParam,
+    #[param(name = "Step 34 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_33: IntParam,
+    #[param(name = "Step 35 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_34: IntParam,
+    #[param(name = "Step 36 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_35: IntParam,
+    #[param(name = "Step 37 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_36: IntParam,
+    #[param(name = "Step 38 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_37: IntParam,
+    #[param(name = "Step 39 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_38: IntParam,
+    #[param(name = "Step 40 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_39: IntParam,
+    #[param(name = "Step 41 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_40: IntParam,
+    #[param(name = "Step 42 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_41: IntParam,
+    #[param(name = "Step 43 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_42: IntParam,
+    #[param(name = "Step 44 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_43: IntParam,
+    #[param(name = "Step 45 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_44: IntParam,
+    #[param(name = "Step 46 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_45: IntParam,
+    #[param(name = "Step 47 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_46: IntParam,
+    #[param(name = "Step 48 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_47: IntParam,
+    #[param(name = "Step 49 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_48: IntParam,
+    #[param(name = "Step 50 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_49: IntParam,
+    #[param(name = "Step 51 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_50: IntParam,
+    #[param(name = "Step 52 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_51: IntParam,
+    #[param(name = "Step 53 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_52: IntParam,
+    #[param(name = "Step 54 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_53: IntParam,
+    #[param(name = "Step 55 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_54: IntParam,
+    #[param(name = "Step 56 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_55: IntParam,
+    #[param(name = "Step 57 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_56: IntParam,
+    #[param(name = "Step 58 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_57: IntParam,
+    #[param(name = "Step 59 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_58: IntParam,
+    #[param(name = "Step 60 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_59: IntParam,
+    #[param(name = "Step 61 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_60: IntParam,
+    #[param(name = "Step 62 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_61: IntParam,
+    #[param(name = "Step 63 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_62: IntParam,
+    #[param(name = "Step 64 Lock", range = "discrete(-1, 1023)", default = -1)]
+    pub lock_63: IntParam,
 }
 impl PicaduraParams {
     pub fn overrides(&self) -> [i32; 64] {
@@ -564,4 +738,141 @@ pub const TIMING_IDS: [PicaduraParamsParamId; 64] = [
     PicaduraParamsParamId::Timing61,
     PicaduraParamsParamId::Timing62,
     PicaduraParamsParamId::Timing63,
+];
+
+impl PicaduraParams {
+    pub fn locks(&self) -> [i32; 64] {
+        [
+            self.lock_0.value_i32(),
+            self.lock_1.value_i32(),
+            self.lock_2.value_i32(),
+            self.lock_3.value_i32(),
+            self.lock_4.value_i32(),
+            self.lock_5.value_i32(),
+            self.lock_6.value_i32(),
+            self.lock_7.value_i32(),
+            self.lock_8.value_i32(),
+            self.lock_9.value_i32(),
+            self.lock_10.value_i32(),
+            self.lock_11.value_i32(),
+            self.lock_12.value_i32(),
+            self.lock_13.value_i32(),
+            self.lock_14.value_i32(),
+            self.lock_15.value_i32(),
+            self.lock_16.value_i32(),
+            self.lock_17.value_i32(),
+            self.lock_18.value_i32(),
+            self.lock_19.value_i32(),
+            self.lock_20.value_i32(),
+            self.lock_21.value_i32(),
+            self.lock_22.value_i32(),
+            self.lock_23.value_i32(),
+            self.lock_24.value_i32(),
+            self.lock_25.value_i32(),
+            self.lock_26.value_i32(),
+            self.lock_27.value_i32(),
+            self.lock_28.value_i32(),
+            self.lock_29.value_i32(),
+            self.lock_30.value_i32(),
+            self.lock_31.value_i32(),
+            self.lock_32.value_i32(),
+            self.lock_33.value_i32(),
+            self.lock_34.value_i32(),
+            self.lock_35.value_i32(),
+            self.lock_36.value_i32(),
+            self.lock_37.value_i32(),
+            self.lock_38.value_i32(),
+            self.lock_39.value_i32(),
+            self.lock_40.value_i32(),
+            self.lock_41.value_i32(),
+            self.lock_42.value_i32(),
+            self.lock_43.value_i32(),
+            self.lock_44.value_i32(),
+            self.lock_45.value_i32(),
+            self.lock_46.value_i32(),
+            self.lock_47.value_i32(),
+            self.lock_48.value_i32(),
+            self.lock_49.value_i32(),
+            self.lock_50.value_i32(),
+            self.lock_51.value_i32(),
+            self.lock_52.value_i32(),
+            self.lock_53.value_i32(),
+            self.lock_54.value_i32(),
+            self.lock_55.value_i32(),
+            self.lock_56.value_i32(),
+            self.lock_57.value_i32(),
+            self.lock_58.value_i32(),
+            self.lock_59.value_i32(),
+            self.lock_60.value_i32(),
+            self.lock_61.value_i32(),
+            self.lock_62.value_i32(),
+            self.lock_63.value_i32(),
+        ]
+    }
+}
+pub const LOCK_IDS: [PicaduraParamsParamId; 64] = [
+    PicaduraParamsParamId::Lock0,
+    PicaduraParamsParamId::Lock1,
+    PicaduraParamsParamId::Lock2,
+    PicaduraParamsParamId::Lock3,
+    PicaduraParamsParamId::Lock4,
+    PicaduraParamsParamId::Lock5,
+    PicaduraParamsParamId::Lock6,
+    PicaduraParamsParamId::Lock7,
+    PicaduraParamsParamId::Lock8,
+    PicaduraParamsParamId::Lock9,
+    PicaduraParamsParamId::Lock10,
+    PicaduraParamsParamId::Lock11,
+    PicaduraParamsParamId::Lock12,
+    PicaduraParamsParamId::Lock13,
+    PicaduraParamsParamId::Lock14,
+    PicaduraParamsParamId::Lock15,
+    PicaduraParamsParamId::Lock16,
+    PicaduraParamsParamId::Lock17,
+    PicaduraParamsParamId::Lock18,
+    PicaduraParamsParamId::Lock19,
+    PicaduraParamsParamId::Lock20,
+    PicaduraParamsParamId::Lock21,
+    PicaduraParamsParamId::Lock22,
+    PicaduraParamsParamId::Lock23,
+    PicaduraParamsParamId::Lock24,
+    PicaduraParamsParamId::Lock25,
+    PicaduraParamsParamId::Lock26,
+    PicaduraParamsParamId::Lock27,
+    PicaduraParamsParamId::Lock28,
+    PicaduraParamsParamId::Lock29,
+    PicaduraParamsParamId::Lock30,
+    PicaduraParamsParamId::Lock31,
+    PicaduraParamsParamId::Lock32,
+    PicaduraParamsParamId::Lock33,
+    PicaduraParamsParamId::Lock34,
+    PicaduraParamsParamId::Lock35,
+    PicaduraParamsParamId::Lock36,
+    PicaduraParamsParamId::Lock37,
+    PicaduraParamsParamId::Lock38,
+    PicaduraParamsParamId::Lock39,
+    PicaduraParamsParamId::Lock40,
+    PicaduraParamsParamId::Lock41,
+    PicaduraParamsParamId::Lock42,
+    PicaduraParamsParamId::Lock43,
+    PicaduraParamsParamId::Lock44,
+    PicaduraParamsParamId::Lock45,
+    PicaduraParamsParamId::Lock46,
+    PicaduraParamsParamId::Lock47,
+    PicaduraParamsParamId::Lock48,
+    PicaduraParamsParamId::Lock49,
+    PicaduraParamsParamId::Lock50,
+    PicaduraParamsParamId::Lock51,
+    PicaduraParamsParamId::Lock52,
+    PicaduraParamsParamId::Lock53,
+    PicaduraParamsParamId::Lock54,
+    PicaduraParamsParamId::Lock55,
+    PicaduraParamsParamId::Lock56,
+    PicaduraParamsParamId::Lock57,
+    PicaduraParamsParamId::Lock58,
+    PicaduraParamsParamId::Lock59,
+    PicaduraParamsParamId::Lock60,
+    PicaduraParamsParamId::Lock61,
+    PicaduraParamsParamId::Lock62,
+    PicaduraParamsParamId::Lock63,
 ];

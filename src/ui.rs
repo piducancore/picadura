@@ -1,6 +1,6 @@
 use crate::{
     PicaduraParams, PicaduraParamsParamId as P, engine,
-    params::{NOTE_IDS, TIMING_IDS},
+    params::{LOCK_IDS, NOTE_IDS, TIMING_IDS},
 };
 use std::{cell::Cell, rc::Rc, sync::Arc};
 use truce::core::editor::PluginContextReadF32;
@@ -10,7 +10,7 @@ use truce_slint::{
     slint::{Model, ModelRc, SharedString, VecModel, include_modules},
 };
 include_modules!();
-const CONTROLS: [P; 9] = [
+const CONTROLS: [P; 10] = [
     P::Root,
     P::Scale,
     P::Length,
@@ -20,9 +20,10 @@ const CONTROLS: [P; 9] = [
     P::Gate,
     P::Slide,
     P::Swing,
+    P::Movement,
 ];
-const LABELS: [&str; 9] = [
-    "ROOT", "SCALE", "STEPS", "OCTAVES", "DENSITY", "ACCENT", "GATE", "SLIDE", "SWING",
+const LABELS: [&str; 10] = [
+    "ROOT", "SCALE", "STEPS", "OCTAVES", "DENSITY", "ACCENT", "GATE", "SLIDE", "SWING", "MOVEMENT",
 ];
 fn note_name(note: u8) -> String {
     format!(
@@ -71,7 +72,7 @@ pub fn editor(params: Arc<PicaduraParams>) -> Box<dyn Editor> {
                 state: state.clone(),
                 active: Cell::new(None),
             });
-            let controls = Rc::new(VecModel::from(vec![ControlView::default(); 9]));
+            let controls = Rc::new(VecModel::from(vec![ControlView::default(); 10]));
             let steps = Rc::new(VecModel::from(vec![StepView::default(); 16]));
             ui.set_controls(ModelRc::from(controls.clone()));
             ui.set_steps(ModelRc::from(steps.clone()));
@@ -96,7 +97,7 @@ pub fn editor(params: Arc<PicaduraParams>) -> Box<dyn Editor> {
                 let p = page.clone();
                 ui.on_step_began(move |index, axis| {
                     let slot = p.get() * 16 + index as usize;
-                    if slot < 64 {
+                    if slot < 64 && g.state.params().settings().locks[slot] < 0 {
                         g.begin(
                             if axis == 0 {
                                 NOTE_IDS[slot]
@@ -128,10 +129,26 @@ pub fn editor(params: Arc<PicaduraParams>) -> Box<dyn Editor> {
                 ui.on_step_toggle(move |index| {
                     let slot = p.get() * 16 + index as usize;
                     let s = cx.params().settings();
-                    if slot < s.length {
+                    if slot < s.length && s.locks[slot] < 0 {
                         let step = engine::pattern(&s)[slot];
                         let note = if step.on { -1 } else { i32::from(step.note) };
                         cx.automate(NOTE_IDS[slot], f64::from(note + 2) / 129.0);
+                    }
+                });
+            }
+            {
+                let p = page.clone();
+                let cx = state.clone();
+                ui.on_step_lock(move |index| {
+                    let slot = p.get() * 16 + index as usize;
+                    let s = cx.params().settings();
+                    if slot < s.length {
+                        let value = if s.locks[slot] >= 0 {
+                            -1
+                        } else {
+                            engine::pattern(&s)[slot].pack()
+                        };
+                        cx.automate(LOCK_IDS[slot], f64::from(value + 1) / 1024.0);
                     }
                 });
             }
@@ -158,16 +175,35 @@ pub fn editor(params: Arc<PicaduraParams>) -> Box<dyn Editor> {
                         }
                     }
                     4 => {
-                        for id in NOTE_IDS {
-                            cx.automate(id, 0.0);
+                        let s = cx.params().settings();
+                        for (slot, id) in NOTE_IDS.iter().enumerate() {
+                            if s.locks[slot] < 0 {
+                                cx.automate(*id, 0.0);
+                            }
                         }
                     }
                     5 => {
-                        for id in TIMING_IDS {
-                            cx.automate(id, 0.5);
+                        let s = cx.params().settings();
+                        for (slot, id) in TIMING_IDS.iter().enumerate() {
+                            if s.locks[slot] < 0 {
+                                cx.automate(*id, 0.5);
+                            }
                         }
                     }
                     6 => cx.automate(P::Run, if cx.params().run.value() { 0.0 } else { 1.0 }),
+                    7 => {
+                        let s = cx.params().settings();
+                        let seed = (cx.params().mutation_seed.value_i32() as u32 + 1) % 65536;
+                        let changes = engine::mutations(&s, seed);
+                        if changes.iter().any(Option::is_some) {
+                            cx.automate(P::MutationSeed, f64::from(seed) / 65535.0);
+                            for (slot, note) in changes.iter().enumerate() {
+                                if let Some(note) = note {
+                                    cx.automate(NOTE_IDS[slot], (f64::from(*note) + 2.0) / 129.0);
+                                }
+                            }
+                        }
+                    }
                     _ => {}
                 });
             }
@@ -225,6 +261,7 @@ pub fn editor(params: Arc<PicaduraParams>) -> Box<dyn Editor> {
                             } else {
                                 format!("{timing:+.1}%")
                             }),
+                            locked: s.locks[slot] >= 0,
                             on: step.on,
                             enabled: slot < s.length,
                             accent: step.accent,
@@ -258,7 +295,7 @@ mod tests {
         let ui = PicaduraUi::new().unwrap();
         ui.set_controls(ModelRc::new(VecModel::from(vec![
             ControlView::default();
-            9
+            10
         ])));
         ui.set_steps(ModelRc::new(VecModel::from(vec![
             StepView {
@@ -286,6 +323,10 @@ mod tests {
             let l = log.clone();
             ui.on_step_toggle(move |_| l.borrow_mut().push((3, 0, 0.0)));
         }
+        {
+            let l = log.clone();
+            ui.on_step_lock(move |slot| l.borrow_mut().push((4, slot, 0.0)));
+        }
         truce_slint::platform::render_to_rgba(&window, 1120, 660, &mut vec![], &mut vec![]);
         let drag = |dx: f32, dy: f32| {
             let start = LogicalPosition::new(45.0, 400.0);
@@ -311,5 +352,31 @@ mod tests {
         log.borrow_mut().clear();
         drag(0.0, 0.0);
         assert_eq!(*log.borrow(), [(3, 0, 0.0)]);
+        log.borrow_mut().clear();
+        // A locked card rejects note/timing gestures, but its lock toggle works.
+        ui.set_steps(ModelRc::new(VecModel::from(vec![
+            StepView {
+                enabled: true,
+                locked: true,
+                on: true,
+                pitch: 36,
+                ..StepView::default()
+            };
+            16
+        ])));
+        truce_slint::platform::render_to_rgba(&window, 1120, 660, &mut vec![], &mut vec![]);
+        drag(0.0, -30.0);
+        drag(0.0, 0.0);
+        assert!(log.borrow().is_empty());
+        let position = LogicalPosition::new(60.0, 332.0);
+        window.dispatch_event(WindowEvent::PointerPressed {
+            position,
+            button: PointerEventButton::Left,
+        });
+        window.dispatch_event(WindowEvent::PointerReleased {
+            position,
+            button: PointerEventButton::Left,
+        });
+        assert_eq!(*log.borrow(), [(4, 0, 0.0)]);
     }
 }

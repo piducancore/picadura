@@ -184,12 +184,13 @@ component InstrumentKnob inherits Rectangle {
 export struct ControlView { label: string, value: float, value-text: string }
 export struct StepView {
     number: string, note: string, pitch: int, timing: float, timing-text: string,
-    on: bool, enabled: bool, accent: bool, slide: bool, edited: bool, playing: bool,
+    locked: bool, on: bool, enabled: bool, accent: bool, slide: bool, edited: bool, playing: bool,
 }
 
 component StepCard inherits Rectangle {
     in property <StepView> data;
     callback toggled();
+    callback lock-toggled();
     callback gesture-began(int);
     callback changed(int,float);
     callback gesture-ended(int);
@@ -246,7 +247,7 @@ component StepCard inherits Rectangle {
         font-size: 8px; color: #e5fa36; horizontal-alignment: center;
     }
     touch := TouchArea {
-        enabled: root.data.enabled;
+        enabled: root.data.enabled && !root.data.locked;
         property <int> axis: -1;
         property <float> initial-pitch;
         property <float> initial-timing;
@@ -277,6 +278,15 @@ component StepCard inherits Rectangle {
             }
         }
     }
+    Rectangle {
+        x: parent.width - 35px; y: 4px; width: 31px; height: 22px;
+        background: root.data.locked ? #e5fa36 : #313a32;
+        border-radius: 3px;
+        Text { text: root.data.locked ? "HELD" : "LOCK";
+            font-size: 8px; color: root.data.locked ? #161b18 : #b7b4a9;
+            horizontal-alignment: center; vertical-alignment: center; }
+        TouchArea { enabled: root.data.enabled; clicked => { root.lock-toggled(); } }
+    }
 }
 
 export component PicaduraUi inherits Window {
@@ -296,6 +306,7 @@ export component PicaduraUi inherits Window {
     callback control-changed(int,float);
     callback control-ended(int);
     callback step-toggle(int);
+    callback step-lock(int);
     callback step-began(int,int);
     callback step-changed(int,int,float);
     callback step-ended(int,int);
@@ -326,6 +337,7 @@ export component PicaduraUi inherits Window {
         HorizontalLayout {
             height: 34px; spacing: 10px;
             InstrumentButton { label: "GENERATE"; clicked => {root.action(0);} }
+            InstrumentButton { label: "MUTATE"; clicked => {root.action(7);} }
             InstrumentButton { label: "NOTES"; clicked => {root.action(1);} }
             InstrumentButton { label: "RHYTHM"; clicked => {root.action(2);} }
             InstrumentButton { label: "EXPRESSION"; clicked => {root.action(3);} }
@@ -353,6 +365,7 @@ export component PicaduraUi inherits Window {
             for step[i] in root.steps: StepCard {
                 data: step;
                 toggled => {root.step-toggle(i);}
+                lock-toggled => {root.step-lock(i);}
                 gesture-began(axis) => {root.step-began(i,axis);}
                 changed(axis,v) => {root.step-changed(i,axis,v);}
                 gesture-ended(axis) => {root.step-ended(i,axis);}

@@ -24,6 +24,8 @@ impl PicaduraParams {
             ],
             overrides: self.overrides(),
             timings: self.timings(),
+            movement: f64::from(self.movement.value()) / 100.0,
+            locks: self.locks(),
         }
     }
 }

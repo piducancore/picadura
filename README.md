@@ -89,3 +89,30 @@ and [website development](site/README.md).
 
 Original code is MIT; third-party notices and the bundled font license ship
 with every package.
+
+### Scale choices
+
+The Scale knob offers 16 choices: Minor (natural), Dorian, Phrygian, Major,
+Pentatonic (minor), Chromatic, Lydian, Mixolydian, Locrian, Harmonic Minor,
+Melodic Minor (ascending), Major Pentatonic, Blues (minor), Whole Tone,
+Diminished Whole–Half, and Diminished Half–Whole. Explicit step-note edits
+remain independent of the scale.
+
+### Movement, mutation and locks
+
+- **Movement**: 0 repeats the root; low values favor repeated and nearby scale
+  degrees; 100 retains the original independent pitch/octave choices. Defaults
+  to 100 so older projects retain their generated contour. Manual notes remain
+  independent of the contour.
+- **Mutate**: changes the pitch of a quarter of the currently sounding, unlocked
+  steps (rounded up), across the entire active pattern. Rhythm, accents, slides,
+  timing, and unselected notes stay unchanged. Lower Movement favors nearby
+  replacement pitches. Mutations become editable note overrides; Reset Notes
+  returns unlocked notes to generation. An entirely silent or locked pattern
+  is a no-op.
+- **Lock / Held** on each step: snapshots its pitch, note/rest state, accent and
+  slide flag. Held steps survive generation and mutation; direct note/timing
+  edits and resets skip them. Click Held to release the snapshot and resume the
+  underlying generated/edited step. Locks and Movement are saved with the DAW
+  project. Global gate and swing still apply; shortening the pattern silences
+  locked steps outside its active length.
