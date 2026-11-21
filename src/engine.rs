@@ -119,8 +119,8 @@ impl PitchPool {
     }
     fn choose(&self, choice: u32) -> usize {
         let mut remaining = f64::from(choice) / (f64::from(u32::MAX) + 1.0);
-        for i in 0..self.len {
-            remaining -= self.weights[i];
+        for (i, weight) in self.weights.iter().enumerate().take(self.len) {
+            remaining -= weight;
             if remaining < 0.0 {
                 return i;
             }
