@@ -294,9 +294,14 @@ export component PicaduraUi inherits Window {
     default-font-family: "JetBrains Mono";
     default-font-size: 11px;
     background: #161b18;
-    preferred-width: 1120px; preferred-height: 660px;
+    preferred-width: 1240px; preferred-height: 730px;
     in property <[ControlView]> controls;
     in property <[StepView]> steps;
+    in property <bool> learning;
+    in property <string> learn-source;
+    in property <bool> strict-notes;
+    in property <bool> follow-root;
+    in property <string> learned-text;
     in property <bool> running;
     in property <int> page;
     in property <string> status;
@@ -344,6 +349,17 @@ export component PicaduraUi inherits Window {
             InstrumentButton { label: "RESET NOTES"; clicked => {root.action(4);} }
             InstrumentButton { label: "RESET TIMING"; clicked => {root.action(5);} }
             InstrumentButton { label: root.running ? "RUN: ON" : "RUN: OFF"; clicked => {root.action(6);} }
+        }
+        HorizontalLayout {
+            height: 38px; spacing: 8px;
+            InstrumentButton { width: 100px; label: "INPUT: " + root.learn-source; clicked => {root.action(8);} }
+            InstrumentButton { width: 116px; label: root.learning ? "FREEZE" : "LEARN"; clicked => {root.action(9);} }
+            InstrumentButton { width: 70px; label: "CLEAR"; clicked => {root.action(10);} }
+            InstrumentButton { width: 105px; label: root.strict-notes ? "STRICT: ON" : "STRICT: OFF"; clicked => {root.action(11);} }
+            InstrumentButton { width: 130px; label: root.follow-root ? "FOLLOW ROOT: ON" : "FOLLOW ROOT: OFF"; clicked => {root.action(12);} }
+            Text { text: (root.learning ? "LISTENING  ·  " : "FROZEN  ·  ") + root.learned-text;
+                color: root.learning ? #e5fa36 : #b7b4a9; font-size: 10px;
+                vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
         }
         HorizontalLayout {
             height: 27px; spacing: 8px;

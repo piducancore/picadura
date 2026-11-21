@@ -25,7 +25,7 @@ Enable the synth's mono legato/portamento for slides. Accents use velocity 120; 
 - **Reset Notes / Reset Timing:** restore generated pitches/rests or zero timing across all 64 steps.
 - **Run:** mute/resume the generator while the host keeps playing.
 
-Root is shown as a note name (MIDI 36 = C2). Six scales, 1–3 octaves, density, accent probability, gate length, slide probability, and swing remain available. `A` marks an accent, `S` a slide, and `*` a manual pitch/rest or timing edit.
+Root is shown as a note name (MIDI 36 = C2). Sixteen scales, 1–3 octaves, density, accent probability, gate length, slide probability, and swing remain available. `A` marks an accent, `S` a slide, and `*` a manual pitch/rest or timing edit.
 
 ## Timing and persistence
 
@@ -68,12 +68,12 @@ Tests cover exact early/late MIDI timestamps, 64-step wraparound, tempo/swing/sl
 
 No hosted synth, audio synthesis, MIDI-file export, Push integration, or internal pattern bank is included.
 
-## Verified build: 0.2.0
+## Verified build: 0.3.0
 
-- 14 tests passed, including pointer drags and the real-time allocation check.
+- 25 tests passed, including MIDI/audio learning, pointer drags and the real-time allocation check.
 - Clippy and formatting checks passed.
-- VST3 passed pluginval strictness 5, including Slint editor and state recall.
-- CLAP: 37 checks passed, 7 skipped; no failures or warnings.
+- VST3 passed pluginval strictness 5, including the Slint editor.
+- CLAP: 40 checks passed, 4 skipped; no failures or warnings.
 - Default Slint layout rendered and visually checked.
 
 ## Downloads and automated releases
@@ -116,3 +116,43 @@ remain independent of the scale.
   underlying generated/edited step. Locks and Movement are saved with the DAW
   project. Global gate and swing still apply; shortening the pattern silences
   locked steps outside its active length.
+
+### Learn from MIDI or a monophonic audio loop
+
+1. Feed Picadura either MIDI notes, or audio through its main mono/stereo input.
+   For audio, place it after the sample on the source audio track, or route that
+   track's audio into a track containing Picadura. Audio passes through unchanged.
+2. Select **INPUT: MIDI** or **INPUT: Audio**, then press **LEARN**. The note pool
+   appears beside the controls. Learning adds to the existing pool; use **CLEAR**
+   before teaching a different passage. MIDI captures Note On events; audio
+   accumulates confident pitch detections, so sustained notes carry more weight.
+3. Press **FREEZE** to stop collecting while keeping the pool. Learning can run
+   while the transport is stopped if the host continues processing live input;
+   sequence playback still requires host transport.
+4. **Influence** blends the chosen scale with learned pitch classes: 0 uses the
+   original scale, 100 uses the learned pool. **Strict** restricts generated and
+   mutated pitches to learned classes regardless of Influence. With an empty
+   pool, generation falls back to the selected scale. Manual notes and locks
+   always take priority.
+5. **Follow Root** uses the most frequently learned pitch class as the register
+   anchor within the current Root octave. This is a dominant-note heuristic,
+   not reliable key/chord recognition. The Octaves control still sets the range.
+6. Route Picadura's generated MIDI to a separate instrument track as before.
+   In Live, select Picadura's track and plugin output in the synth track's
+   MIDI From selectors and enable monitoring. Incoming MIDI teaches the pool;
+   it is not echoed to the output.
+
+The pool and learning controls are saved with the project. Freeze before saving
+if you want to reopen without collecting more notes. Clear is a transient
+command and is never restored from project state. A single learned pitch in one
+ octave can leave no different pitch for Mutate; that is intentionally a no-op.
+
+Audio learning is an initial monophonic implementation (roughly 40–1200 Hz),
+using a fixed-buffer, confidence-gated YIN-style estimator based on
+[de Cheveigné & Kawahara (2002)](https://www.ee.columbia.edu/~dpwe/e6820/papers/deChevK02-yin.pdf).
+It needs roughly a tenth of a second of stable pitch before learning a note.
+Use a clean bass or melody stem; chords, drums, dense mixes, heavy distortion,
+and very short notes can be missed or misidentified. It learns pitch classes,
+not the source's timing, exact octaves, or chord changes. Freeze retains the
+learned pool when the source stops. DAW routing still needs auditioning with a
+real loop; automated tests use synthesized monophonic signals.

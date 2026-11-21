@@ -18,5 +18,5 @@ au_tag = "MIDI"
 # "Other".
 vst3_subcategory = "Tools"
 
-midi_input = false
+midi_input = true
 midi_output = true

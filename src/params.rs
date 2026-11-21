@@ -51,6 +51,12 @@ impl Scale {
     }
 }
 
+#[derive(ParamEnum)]
+pub enum LearnSource {
+    Midi,
+    Audio,
+}
+
 #[derive(Params)]
 pub struct PicaduraParams {
     #[param(name = "Run", default = true)]
@@ -468,6 +474,102 @@ pub struct PicaduraParams {
     pub lock_62: IntParam,
     #[param(name = "Step 64 Lock", range = "discrete(-1, 1023)", default = -1)]
     pub lock_63: IntParam,
+    #[param(name = "Learn Source")]
+    pub learn_source: EnumParam<LearnSource>,
+    #[param(name = "Learn", default = false)]
+    pub learn: BoolParam,
+    #[param(name = "Influence", range = "linear(0, 100)", default = 100)]
+    pub influence: FloatParam,
+    #[param(name = "Strict Notes", default = false)]
+    pub strict_notes: BoolParam,
+    #[param(name = "Follow Root", default = false)]
+    pub follow_root: BoolParam,
+    #[skip]
+    pub clear_learned: std::sync::atomic::AtomicBool,
+    #[param(
+        name = "Learned Pitch 0",
+        range = "discrete(0, 1000000)",
+        default = 0,
+        flags = "hidden"
+    )]
+    pub learned_0: IntParam,
+    #[param(
+        name = "Learned Pitch 1",
+        range = "discrete(0, 1000000)",
+        default = 0,
+        flags = "hidden"
+    )]
+    pub learned_1: IntParam,
+    #[param(
+        name = "Learned Pitch 2",
+        range = "discrete(0, 1000000)",
+        default = 0,
+        flags = "hidden"
+    )]
+    pub learned_2: IntParam,
+    #[param(
+        name = "Learned Pitch 3",
+        range = "discrete(0, 1000000)",
+        default = 0,
+        flags = "hidden"
+    )]
+    pub learned_3: IntParam,
+    #[param(
+        name = "Learned Pitch 4",
+        range = "discrete(0, 1000000)",
+        default = 0,
+        flags = "hidden"
+    )]
+    pub learned_4: IntParam,
+    #[param(
+        name = "Learned Pitch 5",
+        range = "discrete(0, 1000000)",
+        default = 0,
+        flags = "hidden"
+    )]
+    pub learned_5: IntParam,
+    #[param(
+        name = "Learned Pitch 6",
+        range = "discrete(0, 1000000)",
+        default = 0,
+        flags = "hidden"
+    )]
+    pub learned_6: IntParam,
+    #[param(
+        name = "Learned Pitch 7",
+        range = "discrete(0, 1000000)",
+        default = 0,
+        flags = "hidden"
+    )]
+    pub learned_7: IntParam,
+    #[param(
+        name = "Learned Pitch 8",
+        range = "discrete(0, 1000000)",
+        default = 0,
+        flags = "hidden"
+    )]
+    pub learned_8: IntParam,
+    #[param(
+        name = "Learned Pitch 9",
+        range = "discrete(0, 1000000)",
+        default = 0,
+        flags = "hidden"
+    )]
+    pub learned_9: IntParam,
+    #[param(
+        name = "Learned Pitch 10",
+        range = "discrete(0, 1000000)",
+        default = 0,
+        flags = "hidden"
+    )]
+    pub learned_10: IntParam,
+    #[param(
+        name = "Learned Pitch 11",
+        range = "discrete(0, 1000000)",
+        default = 0,
+        flags = "hidden"
+    )]
+    pub learned_11: IntParam,
 }
 impl PicaduraParams {
     pub fn overrides(&self) -> [i32; 64] {
@@ -875,4 +977,37 @@ pub const LOCK_IDS: [PicaduraParamsParamId; 64] = [
     PicaduraParamsParamId::Lock61,
     PicaduraParamsParamId::Lock62,
     PicaduraParamsParamId::Lock63,
+];
+
+impl PicaduraParams {
+    pub fn learned(&self) -> [u32; 12] {
+        [
+            self.learned_0.value_i32() as u32,
+            self.learned_1.value_i32() as u32,
+            self.learned_2.value_i32() as u32,
+            self.learned_3.value_i32() as u32,
+            self.learned_4.value_i32() as u32,
+            self.learned_5.value_i32() as u32,
+            self.learned_6.value_i32() as u32,
+            self.learned_7.value_i32() as u32,
+            self.learned_8.value_i32() as u32,
+            self.learned_9.value_i32() as u32,
+            self.learned_10.value_i32() as u32,
+            self.learned_11.value_i32() as u32,
+        ]
+    }
+}
+pub const LEARNED_IDS: [PicaduraParamsParamId; 12] = [
+    PicaduraParamsParamId::Learned0,
+    PicaduraParamsParamId::Learned1,
+    PicaduraParamsParamId::Learned2,
+    PicaduraParamsParamId::Learned3,
+    PicaduraParamsParamId::Learned4,
+    PicaduraParamsParamId::Learned5,
+    PicaduraParamsParamId::Learned6,
+    PicaduraParamsParamId::Learned7,
+    PicaduraParamsParamId::Learned8,
+    PicaduraParamsParamId::Learned9,
+    PicaduraParamsParamId::Learned10,
+    PicaduraParamsParamId::Learned11,
 ];

@@ -4,6 +4,10 @@ use truce::prelude::ParamEnum;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Settings {
+    pub learned: [u32; 12],
+    pub influence: f64,
+    pub strict: bool,
+    pub follow_root: bool,
     pub movement: f64,
     pub locks: [i32; 64], // -1 unlocked; packed note/on/accent/slide snapshot
     pub root: i32,
@@ -22,6 +26,10 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            learned: [0; 12],
+            influence: 1.0,
+            strict: false,
+            follow_root: false,
             movement: 1.0,
             locks: [-1; 64],
             root: 36,
@@ -58,13 +66,79 @@ fn random(seed: u32, index: usize, lane: u32) -> u32 {
 fn chance(seed: u32, index: usize, lane: u32, amount: f64) -> bool {
     f64::from(random(seed, index, lane)) / (f64::from(u32::MAX) + 1.0) < amount
 }
+/// Build a fixed-size pitch pool. With no learning (or zero influence),
+/// the legacy scale path is left bit-for-bit unchanged.
+struct PitchPool {
+    offsets: [i32; 12],
+    weights: [f64; 12],
+    len: usize,
+    root: i32,
+    guided: bool,
+}
+impl PitchPool {
+    fn new(s: &Settings) -> Self {
+        let scale = Scale::from_index(s.scale).intervals();
+        let total: u32 = s.learned.iter().sum();
+        let guided = total > 0 && (s.influence > 0.0 || s.strict);
+        let mut pool = Self {
+            offsets: [0; 12],
+            weights: [0.0; 12],
+            len: 0,
+            root: s.root,
+            guided,
+        };
+        if !guided {
+            pool.offsets[..scale.len()].copy_from_slice(scale);
+            pool.len = scale.len();
+            return pool;
+        }
+        if s.follow_root {
+            let dominant = (0..12).max_by_key(|i| s.learned[*i]).unwrap_or(0);
+            pool.root = s.root.div_euclid(12) * 12 + dominant as i32;
+        }
+        for offset in 0..12 {
+            let pc = (pool.root + offset).rem_euclid(12) as usize;
+            let learned = f64::from(s.learned[pc]) / f64::from(total);
+            let base = if scale.contains(&offset) {
+                0.75 / scale.len() as f64 + if offset == 0 { 0.25 } else { 0.0 }
+            } else {
+                0.0
+            };
+            let weight = if s.strict {
+                learned
+            } else {
+                (1.0 - s.influence) * base + s.influence * learned
+            };
+            if weight > 0.0 {
+                pool.offsets[pool.len] = offset;
+                pool.weights[pool.len] = weight;
+                pool.len += 1;
+            }
+        }
+        pool
+    }
+    fn choose(&self, choice: u32) -> usize {
+        let mut remaining = f64::from(choice) / (f64::from(u32::MAX) + 1.0);
+        for i in 0..self.len {
+            remaining -= self.weights[i];
+            if remaining < 0.0 {
+                return i;
+            }
+        }
+        self.len - 1
+    }
+}
+
 pub fn pattern(s: &Settings) -> [Step; 64] {
-    let scale = Scale::from_index(s.scale).intervals();
+    let pool = PitchPool::new(s);
+    let scale = &pool.offsets[..pool.len];
     let mut previous_degree = 0i32;
     std::array::from_fn(|i| {
         // Repeated roots supply an anchor; other steps explore scale tones.
         let choice = random(s.seeds[0], i, 15);
-        let degree = if choice.is_multiple_of(4) {
+        let degree = if pool.guided {
+            pool.choose(choice)
+        } else if choice.is_multiple_of(4) {
             0
         } else {
             // The root decision already consumed the low two bits. Reusing
@@ -93,9 +167,10 @@ pub fn pattern(s: &Settings) -> [Step; 64] {
         // Overrides and locks do not feed back into the contour: mutating one
         // note must not silently regenerate every following note.
         previous_degree = position;
-        let note =
-            (s.root + scale[position as usize % scale.len()] + position / scale.len() as i32 * 12)
-                .clamp(0, 127) as u8;
+        let note = (pool.root
+            + scale[position as usize % scale.len()]
+            + position / scale.len() as i32 * 12)
+            .clamp(0, 127) as u8;
         let forced = s.overrides[i];
         let generated = Step {
             note: if forced >= 0 { forced as u8 } else { note },
@@ -139,7 +214,8 @@ impl Step {
 /// Pitch overrides preserve rhythm, expression and every unselected step.
 pub fn mutations(s: &Settings, seed: u32) -> [Option<u8>; 64] {
     let steps = pattern(s);
-    let scale = Scale::from_index(s.scale).intervals();
+    let pool = PitchPool::new(s);
+    let scale = &pool.offsets[..pool.len];
     let mut eligible = [0usize; 64];
     let mut count = 0;
     for (i, step) in steps.iter().enumerate().take(s.length) {
@@ -160,7 +236,7 @@ pub fn mutations(s: &Settings, seed: u32) -> [Option<u8>; 64] {
         // First establish the nearest different scale note for off-scale edits.
         for octave in 0..s.octaves {
             for degree in scale {
-                let note = (s.root + degree + octave * 12).clamp(0, 127);
+                let note = (pool.root + degree + octave * 12).clamp(0, 127);
                 let distance = (note - i32::from(steps[slot].note)).abs();
                 if distance > 0 {
                     nearest = nearest.min(distance);
@@ -169,7 +245,7 @@ pub fn mutations(s: &Settings, seed: u32) -> [Option<u8>; 64] {
         }
         for octave in 0..s.octaves {
             for degree in scale {
-                let note = (s.root + degree + octave * 12).clamp(0, 127);
+                let note = (pool.root + degree + octave * 12).clamp(0, 127);
                 let distance = (note - i32::from(steps[slot].note)).abs();
                 if distance > 0 && distance <= reach.max(nearest) {
                     candidates[len] = note as u8;
@@ -474,6 +550,88 @@ mod tests {
         }
         restored.set_plain(P::Length.into(), 16.0);
         assert!(!pattern(&restored.settings())[63].on);
+    }
+
+    #[test]
+    fn learned_notes_blend_obey_strict_and_preserve_manual_edits() {
+        let base = Settings {
+            length: 64,
+            density: 1.0,
+            ..Settings::default()
+        };
+        let mut learned = [0; 12];
+        learned[1] = 9;
+        learned[6] = 1; // C# and F#, outside C natural minor.
+        let mut s = Settings {
+            learned,
+            influence: 0.0,
+            ..base
+        };
+        assert_eq!(pattern(&s), pattern(&base));
+        s.influence = 1.0;
+        let mut counts = [0; 12];
+        for seed in 0..100 {
+            s.seeds[0] = seed;
+            for step in pattern(&s) {
+                let pc = step.note as usize % 12;
+                assert!([1, 6].contains(&pc));
+                counts[pc] += 1;
+            }
+        }
+        assert!(counts[1] > counts[6] * 5);
+        s.influence = 0.5;
+        assert!(
+            pattern(&s)
+                .iter()
+                .any(|step| ![1, 6].contains(&(step.note % 12)))
+        );
+        s.strict = true;
+        s.influence = 0.0;
+        s.movement = 0.1;
+        assert!(
+            pattern(&s)
+                .iter()
+                .all(|step| [1, 6].contains(&(step.note % 12)))
+        );
+        for note in mutations(&s, 57).into_iter().flatten() {
+            assert!([1, 6].contains(&(note % 12)));
+        }
+        s.overrides[0] = 64;
+        s.locks[1] = Step {
+            note: 67,
+            on: true,
+            accent: true,
+            slide: false,
+        }
+        .pack();
+        assert_eq!(pattern(&s)[0].note, 64);
+        assert_eq!(pattern(&s)[1].note, 67);
+        s.learned = [0; 12];
+        s.overrides = [-2; 64];
+        s.locks = [-1; 64];
+        s.movement = 1.0;
+        assert_eq!(
+            pattern(&s),
+            pattern(&Settings {
+                seeds: s.seeds,
+                ..base
+            })
+        );
+    }
+
+    #[test]
+    fn follow_root_uses_dominant_pitch_and_single_note_pool_can_repeat() {
+        let mut s = Settings {
+            learned: [0; 12],
+            strict: true,
+            follow_root: true,
+            octaves: 1,
+            density: 1.0,
+            ..Settings::default()
+        };
+        s.learned[9] = 20;
+        assert!(pattern(&s).iter().all(|step| step.note == 45));
+        assert!(mutations(&s, 1).iter().all(Option::is_none));
     }
 
     #[test]

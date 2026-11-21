@@ -1,5 +1,6 @@
 use truce::prelude::*;
 mod engine;
+mod learning;
 mod params;
 mod ui;
 use engine::{Midi, Sequencer, Settings};
@@ -26,12 +27,17 @@ impl PicaduraParams {
             timings: self.timings(),
             movement: f64::from(self.movement.value()) / 100.0,
             locks: self.locks(),
+            learned: self.learned(),
+            influence: f64::from(self.influence.value()) / 100.0,
+            strict: self.strict_notes.value(),
+            follow_root: self.follow_root.value(),
         }
     }
 }
 #[derive(Default)]
 pub struct Picadura {
     sequencer: Sequencer,
+    learner: learning::InputLearner,
 }
 impl PluginLogic for Picadura {
     type Params = PicaduraParams;
@@ -39,14 +45,18 @@ impl PluginLogic for Picadura {
     fn reset(state: &mut Self, _: &PicaduraParams, _: &AudioConfig) {
         // Keep voices until the next callback can deliver their note-offs.
         state.sequencer.reset();
+        state.learner.reset_audio();
     }
     fn process(
         state: &mut Self,
         params: &PicaduraParams,
         buffer: &mut AudioBuffer,
-        _: &EventList,
+        events: &EventList,
         context: &mut ProcessContext,
     ) -> ProcessStatus {
+        state
+            .learner
+            .process(params, buffer, events, context.sample_rate);
         // Some hosts supply audio buses for a MIDI effect; preserve that audio.
         for ch in 0..buffer.num_output_channels() {
             if ch < buffer.num_input_channels() {

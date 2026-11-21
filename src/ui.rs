@@ -1,6 +1,6 @@
 use crate::{
     PicaduraParams, PicaduraParamsParamId as P, engine,
-    params::{LOCK_IDS, NOTE_IDS, TIMING_IDS},
+    params::{LOCK_IDS, LearnSource, NOTE_IDS, TIMING_IDS},
 };
 use std::{cell::Cell, rc::Rc, sync::Arc};
 use truce::core::editor::PluginContextReadF32;
@@ -10,7 +10,7 @@ use truce_slint::{
     slint::{Model, ModelRc, SharedString, VecModel, include_modules},
 };
 include_modules!();
-const CONTROLS: [P; 10] = [
+const CONTROLS: [P; 11] = [
     P::Root,
     P::Scale,
     P::Length,
@@ -21,9 +21,20 @@ const CONTROLS: [P; 10] = [
     P::Slide,
     P::Swing,
     P::Movement,
+    P::Influence,
 ];
-const LABELS: [&str; 10] = [
-    "ROOT", "SCALE", "STEPS", "OCTAVES", "DENSITY", "ACCENT", "GATE", "SLIDE", "SWING", "MOVEMENT",
+const LABELS: [&str; 11] = [
+    "ROOT",
+    "SCALE",
+    "STEPS",
+    "OCTAVES",
+    "DENSITY",
+    "ACCENT",
+    "GATE",
+    "SLIDE",
+    "SWING",
+    "MOVEMENT",
+    "INFLUENCE",
 ];
 fn note_name(note: u8) -> String {
     format!(
@@ -65,14 +76,14 @@ impl Drop for Gesture {
 
 pub fn editor(params: Arc<PicaduraParams>) -> Box<dyn Editor> {
     Box::new(
-        SlintEditor::new(params, (1120, 660), |state| {
+        SlintEditor::new(params, (1240, 730), |state| {
             let ui = PicaduraUi::new().expect("create Slint editor");
             let page = Rc::new(Cell::new(0usize));
             let gesture = Rc::new(Gesture {
                 state: state.clone(),
                 active: Cell::new(None),
             });
-            let controls = Rc::new(VecModel::from(vec![ControlView::default(); 10]));
+            let controls = Rc::new(VecModel::from(vec![ControlView::default(); 11]));
             let steps = Rc::new(VecModel::from(vec![StepView::default(); 16]));
             ui.set_controls(ModelRc::from(controls.clone()));
             ui.set_steps(ModelRc::from(steps.clone()));
@@ -204,6 +215,35 @@ pub fn editor(params: Arc<PicaduraParams>) -> Box<dyn Editor> {
                             }
                         }
                     }
+                    8 => cx.automate(
+                        P::LearnSource,
+                        if cx.params().learn_source.value().to_index() == 0 {
+                            1.0
+                        } else {
+                            0.0
+                        },
+                    ),
+                    9 => cx.automate(P::Learn, if cx.params().learn.value() { 0.0 } else { 1.0 }),
+                    10 => cx
+                        .params()
+                        .clear_learned
+                        .store(true, std::sync::atomic::Ordering::Release),
+                    11 => cx.automate(
+                        P::StrictNotes,
+                        if cx.params().strict_notes.value() {
+                            0.0
+                        } else {
+                            1.0
+                        },
+                    ),
+                    12 => cx.automate(
+                        P::FollowRoot,
+                        if cx.params().follow_root.value() {
+                            0.0
+                        } else {
+                            1.0
+                        },
+                    ),
                     _ => {}
                 });
             }
@@ -216,6 +256,32 @@ pub fn editor(params: Arc<PicaduraParams>) -> Box<dyn Editor> {
                     .filter(|t| t.playing && running)
                     .map(|t| engine::playing_step(&s, t.position_beats));
                 ui.set_running(running);
+                ui.set_learning(cx.params().learn.value());
+                ui.set_learn_source(
+                    match cx.params().learn_source.value() {
+                        LearnSource::Midi => "MIDI",
+                        LearnSource::Audio => "Audio",
+                    }
+                    .into(),
+                );
+                ui.set_strict_notes(s.strict);
+                ui.set_follow_root(s.follow_root);
+                let names = [
+                    "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
+                ];
+                let learned = s
+                    .learned
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, n)| **n > 0)
+                    .map(|(i, _)| names[i])
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                ui.set_learned_text(if learned.is_empty() {
+                    "NO NOTES YET — USING SCALE".into()
+                } else {
+                    format!("POOL: {learned}").into()
+                });
                 ui.set_page(page.get() as i32);
                 ui.set_page_text(
                     format!("{} STEPS  /  PAGE {} OF 4", s.length, page.get() + 1).into(),
@@ -274,7 +340,7 @@ pub fn editor(params: Arc<PicaduraParams>) -> Box<dyn Editor> {
             })
         })
         .resizable(true)
-        .min_size((1040, 620)),
+        .min_size((1160, 700)),
     )
 }
 
@@ -291,11 +357,11 @@ mod tests {
     fn pointer_drags_choose_pitch_or_timing_and_never_toggle_a_note() {
         truce_slint::platform::ensure_platform();
         let window = truce_slint::platform::create_slint_window();
-        window.set_size(PhysicalSize::new(1120, 660));
+        window.set_size(PhysicalSize::new(1240, 730));
         let ui = PicaduraUi::new().unwrap();
         ui.set_controls(ModelRc::new(VecModel::from(vec![
             ControlView::default();
-            10
+            11
         ])));
         ui.set_steps(ModelRc::new(VecModel::from(vec![
             StepView {
@@ -327,7 +393,7 @@ mod tests {
             let l = log.clone();
             ui.on_step_lock(move |slot| l.borrow_mut().push((4, slot, 0.0)));
         }
-        truce_slint::platform::render_to_rgba(&window, 1120, 660, &mut vec![], &mut vec![]);
+        truce_slint::platform::render_to_rgba(&window, 1240, 730, &mut vec![], &mut vec![]);
         let drag = |dx: f32, dy: f32| {
             let start = LogicalPosition::new(45.0, 400.0);
             let end = LogicalPosition::new(45.0 + dx, 400.0 + dy);
@@ -364,11 +430,11 @@ mod tests {
             };
             16
         ])));
-        truce_slint::platform::render_to_rgba(&window, 1120, 660, &mut vec![], &mut vec![]);
+        truce_slint::platform::render_to_rgba(&window, 1240, 730, &mut vec![], &mut vec![]);
         drag(0.0, -30.0);
         drag(0.0, 0.0);
         assert!(log.borrow().is_empty());
-        let position = LogicalPosition::new(60.0, 332.0);
+        let position = LogicalPosition::new(65.0, 386.0);
         window.dispatch_event(WindowEvent::PointerPressed {
             position,
             button: PointerEventButton::Left,
